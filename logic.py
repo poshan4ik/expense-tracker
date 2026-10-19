@@ -4,9 +4,13 @@
 Не зависит от интерфейса и базы данных — только функции над числами и списками.
 """
 
-from datetime import date, datetime, timedelta
-from typing import List, Tuple, Dict
+from datetime import date, datetime
+from typing import List, Dict
 
+
+# ── Проверка ввода (validate) ──
+# Функции принимают то, что ввёл пользователь, и либо возвращают
+# готовое значение, либо бросают ошибку ValueError с понятным текстом.
 
 def validate_amount(text: str) -> float:
     """Проверяет сумму: непустая, положительное число. Иначе — ValueError."""
@@ -28,6 +32,7 @@ def validate_date(text: str) -> date:
     if not text:
         raise ValueError("Введите дату")
     try:
+        # strptime разбирает текст по шаблону %d.%m.%Y
         return datetime.strptime(text, "%d.%m.%Y").date()
     except ValueError:
         raise ValueError("Дата в формате ДД.ММ.ГГГГ (например: 15.01.2024)")
@@ -42,31 +47,26 @@ def validate_expense_input(amount_text: str, category: str, date_text: str) -> t
     return amount, category, expense_date
 
 
+# ── Расчёты ──
+# Работают со списком расходов: [{"amount": 100, "category": "Еда", ...}, ...]
+
 def total_sum(expenses: List) -> float:
     """Общая сумма всех расходов."""
-    return sum(e["amount"] for e in expenses)
-
-
-def average_expense(expenses: List) -> float:
-    """Средний расход на одну запись."""
-    if not expenses:
-        return 0.0
-    return total_sum(expenses) / len(expenses)
-
-
-def top_category(expenses: List) -> Tuple[str, float]:
-    """Самая затратная категория: возвращает (категория, сумма)."""
-    sums = sum_by_category(expenses)
-    if not sums:
-        return "—", 0.0
-    return max(sums.items(), key=lambda x: x[1])
+    total = 0
+    for e in expenses:
+        total = total + e["amount"]
+    return total
 
 
 def sum_by_category(expenses: List) -> Dict[str, float]:
     """Суммы по категориям для диаграммы: {категория: сумма}."""
     by_cat: Dict[str, float] = {}
     for e in expenses:
-        by_cat[e["category"]] = by_cat.get(e["category"], 0.0) + e["amount"]
+        category = e["category"]
+        if category in by_cat:
+            by_cat[category] = by_cat[category] + e["amount"]
+        else:
+            by_cat[category] = e["amount"]
     return by_cat
 
 
@@ -74,24 +74,6 @@ def format_amount(amount: float) -> str:
     """Оформляет сумму: пробел между разрядами и знак ₸. Пример: 1 500.00 ₸."""
     if amount == 0:
         return "0 ₸"
-    s = f"{amount:,.2f}".replace(",", " ")
-    return f"{s} ₸"
-
-
-def group_by_day(expenses: List) -> Dict[str, List]:
-    """Группирует расходы по дате: {дата: [расходы этого дня]}."""
-    groups: Dict[str, List] = {}
-    for e in expenses:
-        groups.setdefault(e["date"], []).append(e)
-    return groups
-
-
-def day_title(day: str) -> str:
-    """Название дня для заголовка: Сегодня, Вчера или ДД.ММ.ГГГГ."""
-    today = date.today()
-    if day == today.isoformat():
-        return "Сегодня"
-    if day == (today - timedelta(days=1)).isoformat():
-        return "Вчера"
-    year, month, day_num = day.split("-")
-    return f"{day_num}.{month}.{year}"
+    # :,.2f = разделитель разрядов запятой, 2 знака после точки
+    text = f"{amount:,.2f}".replace(",", " ")
+    return text + " ₸"
